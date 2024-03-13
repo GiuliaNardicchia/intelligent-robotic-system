@@ -1,0 +1,133 @@
+<?xml version="1.0" ?>
+ 
+<argos-configuration>
+ 
+  <!-- ************************* -->
+  <!-- * General configuration * -->
+  <!-- ************************* -->
+  <framework>
+    <system threads="0" /> <!-- nessun thread utilizzato -->
+    <experiment length="0" 
+                ticks_per_second="10"
+     />
+    <!-- lunghezza della simulazione in secondi (in tempo reale), serve a fare delle statistiche/esperimenti  confrontabili nel mondo fisico (tagliando la parte grafica) -->
+    <!-- ticks_per_second="10" vuol dire che una volta ogni 10 secondi il robot viene svegliato, vengono lette le informazioni dei sensori, compie le sue azioni, ecc... -->
+    <!-- bisogna calcolare il movimento (velocità delle ruote) del robot in base al valore impostato nella simulazione, sfruttiamo queste impostazioni (è comodo per fare delle considerazioni ogni tot milliseconds, ci offre la possibilità di fare dei controlli ripetuti -> polling) -->
+    <!-- You may want to set the seed of the RNG by: random_seed = "1" (or any n>0) in experiment  -->
+    <!-- If you don't do this, the RNG (Random Number Generator) is initialised by taking the CPU time -->
+    <!-- impostare il random seed serve a garantire la riproducibilità, è fondamentale quindi impostarlo -->
+  </framework>
+  <!-- non sottovalutare gli outliers -->
+  
+ 
+  <!-- *************** -->
+  <!-- * Controllers * -->
+  <!-- *************** -->
+  <controllers> <!-- possono essererci diversi controller, in questo esempio c'è solo un controller per un robot -->
+ 
+    <lua_controller id="lua">
+      <actuators> <!-- attuatori -->
+        <differential_steering implementation="default" noise_level="0.0"/><!-- differential_steering motore delle due ruote (agli estremi opposti di un asse)-->
+	      <leds implementation="default" medium="leds" /><!-- i led, vengono solo colorati -->
+      </actuators>
+      <sensors> <!-- sensori -->
+        <differential_steering implementation="default" noise_level="0.0" /><!-- serve per impostare il positioning, che nel mondo reale non esiste, è il posizionamento del robot all'interno dell'arena, ed è da mettere perchè sta usando il motor_ground e quindi ci servono entrambi -->
+        <footbot_proximity implementation="default" show_rays="false" noise_level="0.0" />
+        <footbot_light implementation="rot_z_only" show_rays="false" noise_level="0.0" />
+				<footbot_motor_ground implementation="rot_z_only" noise_level="0.0" />
+				<positioning implementation="default" noise_level="0.0" />
+        <!-- bisogna modificare il noise_level di pochissimo -->
+      </sensors>
+      <params script="hellorobot.lua" />
+    </lua_controller>
+ 
+  </controllers>
+ 
+
+  <!-- *********************** -->
+  <!-- * Arena configuration * -->
+  <!-- *********************** -->
+  <arena size="4, 4, 1" center="0,0,0.5" positional_grid_size="8,8,1"><!-- la dimensione è pari a 4 metri per 4 metri -->
+	<floor id="f" source="image" path="four_spots.png" /> <!-- pavimento dell'arena (floor), se non si secifica rimane quella grigia di default-->
+  <!-- senza il floor non riesce ad inizializzare alcuni parametri del robot, non può funzionare il groud_sensors -->
+    <box id="bn" size="0.1, 4, 0.2" movable="false">
+      <body position="1.9, 0, 0"  orientation="0,0,0" />
+    </box>
+    <box id="bs" size="0.1, 4, 0.2" movable="false">
+      <body position="-1.9,0,0" orientation="0,0,0" />
+    </box>
+    <box id="be" size="4, 0.1, 0.2" movable="false">
+      <body position="0,-1.9,0" orientation="0,0,0" />
+    </box>
+    <box id="bw" size="4, 0.1, 0.2" movable="false">
+      <body position="0,1.9,0" orientation="0,0,0" />
+    </box>
+ 
+    <light id="light"
+           position="0,0,0.5"
+           orientation="0,0,0"
+           color="yellow"
+           intensity="1"
+           medium="leds"/><!-- è la pallina luminosa (luce) impostata a 0.5 metri da terra, l'intnsità è impostata a 1 -->
+ 
+    <distribute> 
+      <position method="uniform" min="-2,-2,0" max="2,2,0" /><!-- i cubi sono posizionati in maniera randomica (distribuzione uniforme) in questo spazio (a caso) -->
+      <orientation method="uniform" min="0,0,0" max="360,0,0" />
+      <entity quantity="5" max_trials="100"><!-- 5 blocchi (cubi), perchè max_trials="100"? perchè non c'è un controllo dei vincoli e il motore cerca di soddisfare dei vincoli fisicamente non soddisfacibili e quindi tenterebbe all'infinito -->
+        <box id="o" size="0.2, 0.2, 0.2" movable="false" /><!-- sono cubi per via della dimensione-->
+      </entity>
+    </distribute>
+    
+    
+    <!-- Place the robot in a given precise position -->
+    <!-- <foot-bot id="fb">
+      <controller config="lua" />
+      <body position="0.2,0.3,0" orientation="0,0,0" />
+    </foot-bot> -->
+
+
+    <!-- If you want to place the robot(s) in a random position you may want to use this piece of code -->
+    <!-- The number of robots can be specificed by changing the field quantity in entity -->
+    <distribute>
+      <position method="uniform" min="-1.9,-1.9,0" max="1.9,1.9,0" />
+      <orientation method="uniform" min="0,0,0" max="360,0,0" />
+      <entity quantity="1" max_trials="100">
+        <foot-bot id="fb"><!-- il foot-bot è il robot -->
+          <controller config="lua" /><!-- specifichiamo il controller -->
+        </foot-bot>
+      </entity>
+    </distribute>
+
+
+  </arena>
+ 
+  <!-- ******************* -->
+  <!-- * Physics engines * -->
+  <!-- ******************* -->
+  <physics_engines>
+    <dynamics2d id="dyn2d" />
+  </physics_engines>
+ 
+  <!-- ********* -->
+  <!-- * Media * -->
+  <!-- ********* -->
+  <media>
+    <led id="leds" />
+  </media>
+
+	
+  <!-- ****************** -->
+  <!-- * Visualization * -->
+  <!-- ****************** -->
+  <visualization>
+    <qt-opengl lua_editor="false"><!-- editor diasbled --><!-- put true and use the built-in editor only when the simulator is freezed -->
+      <camera>
+        <placements>
+          <placement index="0" position="-2.0767,0.015,2.74921" look_at="-1.59254,0.015,1.87423" lens_focal_length="20" />
+          <!-- nel simulatore cliccando su camera e XML è possibile ottenere la posizione esatta della camera -->
+        </placements>
+      </camera>
+    </qt-opengl>
+  </visualization>
+ 
+</argos-configuration>
