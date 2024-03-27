@@ -1,41 +1,40 @@
 <?xml version="1.0" ?>
- 
+
 <argos-configuration>
- 
+
   <!-- ************************* -->
   <!-- * General configuration * -->
   <!-- ************************* -->
   <framework>
     <system threads="0" />
-    <experiment length="0" 
+    <experiment length="0"
                 ticks_per_second="10"
-                random_seed = "42"
-     /><!-- random seed impostato -->
+                random_seed = "1"
+     /><!-- random seed set -->
   </framework>
-  
- 
+
+
   <!-- *************** -->
   <!-- * Controllers * -->
   <!-- *************** -->
   <controllers>
- 
+
     <lua_controller id="lua">
-      <actuators> <!-- attuatori -->
+      <actuators>
         <differential_steering implementation="default" noise_level="0.0"/>
 	      <leds implementation="default" medium="leds" />
       </actuators>
-      <sensors> <!-- sensori -->
+      <sensors>
         <differential_steering implementation="default" noise_level="0.0" />
         <footbot_proximity implementation="default" show_rays="false" noise_level="0.0" />
         <footbot_light implementation="rot_z_only" show_rays="false" noise_level="0.0" />
 				<positioning implementation="default" noise_level="0.0" />
-        <!-- bisogna modificare il noise_level di pochissimo -->
       </sensors>
-      <params script="composite_behaviour2.lua" />
+      <params script="composite_behaviour.lua" />
     </lua_controller>
- 
+
   </controllers>
- 
+
 
   <!-- *********************** -->
   <!-- * Arena configuration * -->
@@ -53,7 +52,7 @@
     <box id="bw" size="4, 0.1, 0.2" movable="false">
       <body position="0,1.9,0" orientation="0,0,0" />
     </box>
- 
+
     <light id="light"
            position="0,0,0.5"
            orientation="0,0,0"
@@ -61,22 +60,16 @@
            intensity="1"
            medium="leds"/>
 
-    <light id="light2"
-        position="-1.5,1,0.3"
-        orientation="0,0,0"
-        color="yellow"
-        intensity="0.8"
-        medium="leds"/>
- 
-    <distribute> 
+    <distribute>
       <position method="uniform" min="-2,-2,0" max="2,2,0" />
       <orientation method="uniform" min="0,0,0" max="360,0,0" />
       <entity quantity="5" max_trials="100">
         <box id="o1" size="0.2, 0.2, 0.2" movable="false" />
       </entity>
     </distribute>
-    
-    <distribute> 
+
+    <!-- added multiple blocks of different sizes -->
+    <distribute>
       <position method="uniform" min="-2,-2,0" max="2,2,0" />
       <orientation method="uniform" min="0,0,0" max="360,0,0" />
       <entity quantity="5" max_trials="100">
@@ -84,18 +77,10 @@
       </entity>
     </distribute>
 
-    <distribute> 
-      <position method="uniform" min="-2,-2,0" max="2,2,0" />
-      <orientation method="uniform" min="0,0,0" max="360,0,0" />
-      <entity quantity="5" max_trials="100">
-        <box id="o3" size="0.1, 0.6, 0.5" movable="false" />
-      </entity>
-    </distribute>
-
     <distribute>
       <position method="uniform" min="-1.9,-1.9,0" max="1.9,1.9,0" />
       <orientation method="uniform" min="0,0,0" max="360,0,0" />
-      <entity quantity="3" max_trials="100">
+      <entity quantity="1" max_trials="100">
         <foot-bot id="fb">
           <controller config="lua" />
         </foot-bot>
@@ -104,14 +89,14 @@
 
 
   </arena>
- 
+
   <!-- ******************* -->
   <!-- * Physics engines * -->
   <!-- ******************* -->
   <physics_engines>
     <dynamics2d id="dyn2d" />
   </physics_engines>
- 
+
   <!-- ********* -->
   <!-- * Media * -->
   <!-- ********* -->
@@ -119,21 +104,18 @@
     <led id="leds" />
   </media>
 
-	
+
   <!-- ****************** -->
   <!-- * Visualization * -->
   <!-- ****************** -->
   <visualization>
     <qt-opengl lua_editor="false">
       <camera>
-        <!--<placements>
-          <placement index="0" position="-2.0767,0.015,2.74921" look_at="-1.59254,0.015,1.87423" lens_focal_length="20" />
-        </placements>-->
         <placements>
             <placement index="0" position="1.698,-0.116087,7.93576" look_at="1.48329,-0.116211,6.95908" up="-0.97668,-0.000564445,0.2147" lens_focal_length="50" />
         </placements>
       </camera>
     </qt-opengl>
   </visualization>
- 
+
 </argos-configuration>

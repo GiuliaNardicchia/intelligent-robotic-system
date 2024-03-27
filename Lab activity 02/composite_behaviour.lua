@@ -1,174 +1,133 @@
--- Put your global variables here
+local robotUtilities = dofile("utilities.lua")
 
 MOVE_STEPS = 15
 MAX_VELOCITY = 15
-LIGHT_THRESHOLD = 2 -- 1.5
-MAX_PROXIMITY = 0
+LIGHT_THRESHOLD = 1.8
+PROXIMITY_THRESHOLD = 0.6
+NOISE_THRESHOLD = 0.05
 
-n_steps = 0
+local n_steps = 0
+local robot_state = 0
 
---- Turn left.
----@param right_v any
-local function turnLeft(right_v)
-	left_v = 0
-	robot.wheels.set_velocity(left_v,right_v)
-end
+RobotState = {
+	SEARCHING_TARGET = 0,
+	OBSTACLE_AVOIDANCE = 1,
+	RANDOM_WALK = 2,
+	REACHED_TARGET = 3
+}
 
---- Turn right.
---- @param left_v any
-local function turnRight(left_v)
-	right_v = 0
-	robot.wheels.set_velocity(left_v,right_v)
-end
-
---[[ This function is executed every time you press the 'execute'
-     button ]]
 function init()
 	left_v = robot.random.uniform(0,MAX_VELOCITY)
 	right_v = robot.random.uniform(0,MAX_VELOCITY)
-	robot.wheels.set_velocity(left_v,right_v)
+	robotUtilities.move(robot, robotUtilities.MovementType.FORWARD, left_v, right_v)
 	n_steps = 0
-	robot.leds.set_all_colors("black")
+	robot_state = RobotState.SEARCHING_TARGET
 end
 
 
-
---[[ This function is executed at each time step
-     It must contain the logic of your controller ]]
 function step()
 	n_steps = n_steps + 1
-	--[[if n_steps % MOVE_STEPS == 0 then
-		left_v = robot.random.uniform(0,MAX_VELOCITY)
-		right_v = robot.random.uniform(0,MAX_VELOCITY)
+
+	-- sensors readings
+	local sum_light_left, sum_light_right = robotUtilities.read_half_sensors(robot.light, robotUtilities.OrientationType.HORIZONTAL_LEFT)
+	local sum_light_front, sum_light_back = robotUtilities.read_half_sensors(robot.light, robotUtilities.OrientationType.VERTICAL_FRONT)
+	local sum_proximity_left, sum_proximity_right = robotUtilities.read_half_sensors(robot.proximity, robotUtilities.OrientationType.HORIZONTAL_LEFT)
+	local proximity_front = robot.proximity[1].value + robot.proximity[24].value
+
+	local total_light = sum_light_right + sum_light_left
+	local total_proximity = sum_proximity_right + sum_proximity_left
+
+	log("light sum_light_right "..sum_light_right)
+	log("light sum_light_left "..sum_light_left)
+	log("proximity sum_proximity_right "..sum_proximity_right)
+	log("proximity sum_proximity_left "..sum_proximity_left)
+
+	-- if neither the right nor left side detects any light
+	-- and there are no obstacles detected in front
+	if total_light < NOISE_THRESHOLD and not(proximity_front > PROXIMITY_THRESHOLD) then
+		robot_state = RobotState.RANDOM_WALK
+		-- if the total light intensity reading exceeds a certain threshold
+	elseif total_light > LIGHT_THRESHOLD then
+		robot_state = RobotState.REACHED_TARGET
+		-- if the total proximity reading exceeds a certain threshold
+	elseif total_proximity > PROXIMITY_THRESHOLD then
+		robot_state = RobotState.OBSTACLE_AVOIDANCE
+		-- otherwise
+	else
+		robot_state = RobotState.SEARCHING_TARGET
 	end
-	robot.wheels.set_velocity(left_v,right_v)]]--
+
+	-- robot state: SEARCHING_TARGET
+	if robot_state == RobotState.SEARCHING_TARGET then
+		log("SEARCHING_TARGET")
+		robot.leds.set_all_colors("black")
+		-- if the light intensity in front is greater than the light intensity at the back
+		-- and there is no light detected at the back
+		if sum_light_front > 0 and sum_light_back < NOISE_THRESHOLD then
+			-- move the robot forward at maximum velocity
+			robotUtilities.move(robot, robotUtilities.MovementType.FORWARD, MAX_VELOCITY, MAX_VELOCITY)
+		else
+			-- if the light intensity on the right side is greater than the left side
+			if sum_light_right > sum_light_left then
+				-- move the robot to the right at maximum velocity
+				robotUtilities.move(robot, robotUtilities.MovementType.RIGHT, MAX_VELOCITY, nil)
+			else
+				-- move the robot to the left at maximum velocity
+				robotUtilities.move(robot, robotUtilities.MovementType.LEFT, nil, MAX_VELOCITY)
+			end
+		end
+
+		-- robot state: OBSTACLE_AVOIDANCE
+	elseif robot_state == RobotState.OBSTACLE_AVOIDANCE then
+		log("OBSTACLE_AVOIDANCE")
+		robot.leds.set_all_colors("red")
+		-- if the proximity on the right side is greater than the left side
+		if sum_proximity_right > sum_proximity_left then
+			-- move the robot to the left at maximum velocity
+			robotUtilities.move(robot, robotUtilities.MovementType.LEFT, nil, MAX_VELOCITY)
+		else
+			-- move the robot to the right at maximum velocity
+			robotUtilities.move(robot, robotUtilities.MovementType.RIGHT, MAX_VELOCITY, nil)
+		end
+
+		-- robot state: RANDOM_WALK
+	elseif robot_state == RobotState.RANDOM_WALK then
+		log("RANDOM_WALK")
+		robot.leds.set_all_colors("green")
+
+		if n_steps % MOVE_STEPS == 0 then
+			-- generate random velocities for left and right wheels
+			left_v = robot.random.uniform(0,MAX_VELOCITY)
+			right_v = robot.random.uniform(0,MAX_VELOCITY)
+		end
+		-- move the robot forward with the calculated velocities
+		robotUtilities.move(robot, robotUtilities.MovementType.FORWARD, left_v, right_v)
+
+
+		-- robot state: REACHED_TARGET
+	elseif robot_state == RobotState.REACHED_TARGET then
+		log("REACHED_TARGET")
+		robot.leds.set_all_colors("yellow")
+		-- stop the robot
+		robotUtilities.move(robot, robotUtilities.MovementType.STOP, nil, nil)
+	end
+
 	log("robot.position.x = " .. robot.positioning.position.x)
 	log("robot.position.y = " .. robot.positioning.position.y)
 	log("robot.position.z = " .. robot.positioning.position.z)
-	light_front = robot.light[1].value + robot.light[24].value
-	log("robot.light_front = " .. light_front)
-	
-	-- Search for the reading with the highest value
-	value = -1 -- highest value found so far
-	idx = -1   -- index of the highest value
-	for i=1,#robot.proximity do -- scansiona tutti i 24 sensori di prossimità (# = cardinalità)
-		if value < robot.proximity[i].value then
-			idx = i
-			value = robot.proximity[i].value
-		end
-	end
-	proximity_front = robot.proximity[1].value + robot.proximity[24].value
-	log("robot max proximity sensor: " .. idx .. "," .. value)
-
-	--[[ Check if close to light 
-	(note that the light threshold depends on both sensor and actuator characteristics) ]]
-	--[[ light = false
-	sum = 0
-	for i=1,#robot.light do
-		sum = sum + robot.light[i].value
-	end
-	if sum > LIGHT_THRESHOLD then -- se la somma è superiore ad una certa soglia allora è vicino alla luce (sole)
-		light = true
-	end]]--
-
-	light = false
-	sum_right = 0
-	sum_left = 0
-	half = #robot.light/2
-	for i=1,#robot.light do
-		if i >= half+1 and i<= #robot.light then
-			sum_right = sum_right + robot.light[i].value
-		elseif i >= 1 and i <= half then
-			sum_left = sum_left + robot.light[i].value
-		end
-	end
-	log("light sum_right "..sum_right)
-	log("light sum_left "..sum_left)
-
-
-	log("front 1 "..robot.light[1].value)
-	log("front 24 "..robot.light[24].value)
-
-	if math.abs(robot.light[1].value - robot.light[24].value) > 0.02 then --TODO
-		left_v = MAX_VELOCITY
-		right_v = MAX_VELOCITY
-		robot.wheels.set_velocity(left_v,right_v)
-	else
-
-		if sum_right + sum_left > LIGHT_THRESHOLD then
-			light = true
-			left_v = 0 -- MAX_VELOCITY
-			right_v = 0 -- -MAX_VELOCITY
-			robot.wheels.set_velocity(left_v,right_v)
-			robot.leds.set_all_colors("red")
-		else
-			robot.leds.set_all_colors("black")
-			if sum_right > sum_left then
-				turnRight(MAX_VELOCITY)
-			else
-				turnLeft(MAX_VELOCITY)
-			end
-		end
-	end
-
-	--[[if sum_right > sum_left then
-		robot.leds.set_all_colors("black")
-		turnRight(MAX_VELOCITY)
-	else
-		robot.leds.set_all_colors("black")
-		turnLeft(MAX_VELOCITY)
-	end ]]--
-
-
-	proximity = false
-	sum_proximity_right = 0
-	sum_proximity_left = 0
-	half_proximity = #robot.proximity/2
-	for i=1,#robot.proximity do
-		if i >= half_proximity+1 and i<= #robot.proximity then
-			sum_proximity_right = sum_proximity_right + robot.proximity[i].value
-		elseif i >= 1 and i <= half_proximity then
-			sum_proximity_left = sum_proximity_left + robot.proximity[i].value
-		end
-	end
-	log("proximity sum_right "..sum_proximity_right)
-	log("proximity sum_left "..sum_proximity_left)
-
-	if proximity_front > MAX_PROXIMITY then
-		if sum_proximity_right > sum_proximity_left then
-			turnLeft(MAX_VELOCITY)
-		else
-			turnRight(MAX_VELOCITY)
-		end
-	end
-
-	if light == false and not(proximity_front > MAX_PROXIMITY) and not(sum_right~=0 or sum_left~=0) then
-		left_v = robot.random.uniform(0,MAX_VELOCITY)
-		right_v = robot.random.uniform(0,MAX_VELOCITY)
-		robot.wheels.set_velocity(left_v,right_v)
-	end
 
 end
 
 
-
---[[ This function is executed every time you press the 'reset'
-     button in the GUI. It is supposed to restore the state
-     of the controller to whatever it was right after init() was
-     called. The state of sensors and actuators is reset
-     automatically by ARGoS. ]]
 function reset()
 	left_v = robot.random.uniform(0,MAX_VELOCITY)
 	right_v = robot.random.uniform(0,MAX_VELOCITY)
-	robot.wheels.set_velocity(left_v,right_v)
+	robotUtilities.move(robot, robotUtilities.MovementType.FORWARD, left_v, right_v)
 	n_steps = 0
-	robot.leds.set_all_colors("black")
+	robot_state = RobotState.SEARCHING_TARGET
 end
 
 
-
---[[ This function is executed only once, when the robot is removed
-     from the simulation ]]
 function destroy()
-   -- put your code here
+
 end
