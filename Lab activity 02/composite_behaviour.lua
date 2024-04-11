@@ -1,27 +1,29 @@
 local robotUtilities = dofile("utilities.lua")
+local performance = dofile("performance.lua")
 
 MOVE_STEPS = 15
 MAX_VELOCITY = 15
 LIGHT_THRESHOLD = 1.8
-PROXIMITY_THRESHOLD = 0.6
-NOISE_THRESHOLD = 0.05
-
-local n_steps = 0
-local robot_state = 0
+PROXIMITY_THRESHOLD = 0.1
+NOISE_THRESHOLD = 0.06
+FRONTAL_THRESHOLD = 0.05
 
 RobotState = {
-	SEARCHING_TARGET = 0,
-	OBSTACLE_AVOIDANCE = 1,
-	RANDOM_WALK = 2,
+	RANDOM_WALK = 0,
+	SEARCHING_TARGET = 1,
+	OBSTACLE_AVOIDANCE = 2,
 	REACHED_TARGET = 3
 }
+
+local n_steps = 0
+local robot_state = RobotState.RANDOM_WALK
 
 function init()
 	left_v = robot.random.uniform(0,MAX_VELOCITY)
 	right_v = robot.random.uniform(0,MAX_VELOCITY)
 	robotUtilities.move(robot, robotUtilities.MovementType.FORWARD, left_v, right_v)
 	n_steps = 0
-	robot_state = RobotState.SEARCHING_TARGET
+	robot_state = RobotState.RANDOM_WALK
 end
 
 
@@ -37,21 +39,15 @@ function step()
 	local total_light = sum_light_right + sum_light_left
 	local total_proximity = sum_proximity_right + sum_proximity_left
 
-	log("light sum_light_right "..sum_light_right)
-	log("light sum_light_left "..sum_light_left)
-	log("proximity sum_proximity_right "..sum_proximity_right)
-	log("proximity sum_proximity_left "..sum_proximity_left)
-
-	-- if neither the right nor left side detects any light
-	-- and there are no obstacles detected in front
-	if total_light < NOISE_THRESHOLD and not(proximity_front > PROXIMITY_THRESHOLD) then
-		robot_state = RobotState.RANDOM_WALK
-		-- if the total light intensity reading exceeds a certain threshold
-	elseif total_light > LIGHT_THRESHOLD then
+	-- if the total light intensity reading exceeds a certain threshold
+	if total_light > LIGHT_THRESHOLD then
 		robot_state = RobotState.REACHED_TARGET
 		-- if the total proximity reading exceeds a certain threshold
 	elseif total_proximity > PROXIMITY_THRESHOLD then
 		robot_state = RobotState.OBSTACLE_AVOIDANCE
+		-- if no light detected and there are no obstacles detected in front
+	elseif total_light < NOISE_THRESHOLD and proximity_front < PROXIMITY_THRESHOLD then
+		robot_state = RobotState.RANDOM_WALK
 		-- otherwise
 	else
 		robot_state = RobotState.SEARCHING_TARGET
@@ -63,7 +59,7 @@ function step()
 		robot.leds.set_all_colors("black")
 		-- if the light intensity in front is greater than the light intensity at the back
 		-- and there is no light detected at the back
-		if sum_light_front > 0 and sum_light_back < NOISE_THRESHOLD then
+		if sum_light_front > 0 and sum_light_back < FRONTAL_THRESHOLD then
 			-- move the robot forward at maximum velocity
 			robotUtilities.move(robot, robotUtilities.MovementType.FORWARD, MAX_VELOCITY, MAX_VELOCITY)
 		else
@@ -111,11 +107,6 @@ function step()
 		-- stop the robot
 		robotUtilities.move(robot, robotUtilities.MovementType.STOP, nil, nil)
 	end
-
-	log("robot.position.x = " .. robot.positioning.position.x)
-	log("robot.position.y = " .. robot.positioning.position.y)
-	log("robot.position.z = " .. robot.positioning.position.z)
-
 end
 
 
@@ -124,10 +115,19 @@ function reset()
 	right_v = robot.random.uniform(0,MAX_VELOCITY)
 	robotUtilities.move(robot, robotUtilities.MovementType.FORWARD, left_v, right_v)
 	n_steps = 0
-	robot_state = RobotState.SEARCHING_TARGET
+	robot_state = RobotState.RANDOM_WALK
 end
 
 
-function destroy()
 
+function destroy()
+	local light_position = {x = 0, y = 0}
+	local robot_position = {x = robot.positioning.position.x, y = robot.positioning.position.y, z = robot.positioning.position.z}
+	local euclidean_distance = performance.euclidean_distance(robot_position.x, robot_position.y, light_position.x, light_position.y)
+
+	log("euclidean_distance: " .. euclidean_distance)
+	log("n_steps: " .. n_steps)
+	log("robot.position.x = " .. robot_position.x)
+	log("robot.position.y = " .. robot_position.y)
+	log("robot.position.z = " .. robot_position.z)
 end

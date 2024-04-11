@@ -1,4 +1,6 @@
 # Composite behaviour
+TThis lab activity aims on combining simple behaviours into a composite one.
+
 ## Constraints
 The robot should:
 - find a light source and go towards it
@@ -8,41 +10,60 @@ The robot should:
 
 The robot is equipped with both light and proximity sensors.
 
-## Problems and possible solutions
-- *utilities.lua* --> contiene alcune funzioni di utilità: move, search_highest_value, read_half_sensors.
+## Solution description
+- *utilities.lua* --> contains enums and utility functions.
+  - `MovementType`: enum representing the robot's movement type (`FORWARD`: moves forward, `BACKWARD`: moves backward, `LEFT`: turns left, `RIGHT`: turns right, `BACK_LEFT`: turns left backward, `BACK_RIGHT`: turns right backward, `STOP`: stops)
+  - `OrientationType`: orientation, considering the robot's sensors as arranged vertically and horizontally:
+    - `VERTICAL_FRONT` table containing indices of sensors corresponding to the front half
+    - `HORIZONTAL_LEFT` table containing indices of sensors corresponding to the left half
+  - `move`: function representing the robot's movement based on the specified MovementType, setting wheel velocities using `wheels.set_velocity`.
+  - `search_highest_value`: function that searches among input sensors for the highest value and returns that value with its corresponding index
+  - `read_half_sensors`: calculates the sum of half the sensors based on the specified `OrientationType` (left/right horizontally or front/back vertically).
 
-- *composite_behaviour.lua* --> contiene la logica del controller del robot. Ho sviluppato una soluzione al problema usando un approccio di tipo arbitration classico e ho suddiviso il comportamento del robot in quattro stati principali.
-  Descrizione:
-  - Come prima cosa ho definito le variabili globali che rappresentano i valori di soglia: MOVE_STEPS = 15, MAX_VELOCITY = 15, LIGHT_THRESHOLD = 1.9 e PROXIMITY_THRESHOLD = 0.
-  - La funzione di *init* e *reset* sono identiche e stabiliscono un movimento iniziale randomico, n_steps pari a 0 e inizializzano lo stato del robot in `SEARCHING_TARGET`.
-  - La funzione di *destroy* l'ho lasciata vuota.
-  - La funzione di *step*, che contiene la vera logica del controller, viene eseguita ogni 10 ticks per second. Innanzitutto vengono letti i valori dei sensori di luce e di prossimità: calcolando la somma della metà dei sensori in base all'orientamento stabilito (orizzontale sinistra/destra e in verticale fronte/retro). Si effettuano poi i controlli per verificare in quale stato si trova il robot:
-  - se almeno una delle due parti (laterale sinistra o destra) non ha rilevato una luce o se non ha rilevato nessuno oggetto frontalmente allora il robot si trova nello stato di:
-    - `RANDOM_WALK`: esegue una camminata random.
-  - se la somma totale di tutti i sensori di prossimità supera una certa soglia, il robot si trova nello stato di:
-    - `OBSTACLE_AVOIDANCE`: se la somma dei sensori di prossimità di destra supera quella di sinistra allora gira a sinistra e viceversa, l'obiettivo in questo caso è quello di allontanarsi dall'oggetto.
-  - se la somma totale di tutti i sensori di luce supera una certa soglia allora si trova nello stato di:
-    - `REACHED_TARGET`: ha raggiunto l'obiettivo e quindi si deve fermare.
-  - se nessuna delle condizioni precedenti ha successo, allora il robot rimane nello stato di:
-    - `SEARCHING_TARGET`: se la somma dei sensori di luce frontali è maggiore rispetto a quelli dietro e non ha rilevato nulla dietro, allora vuol dire che è posizionato di fronte alla luce e si può muovere in avanti andando al massimo della velocità. Altrimenti si effettua un ulteriore controllo per ricalibrare la posizione del robot: se la somma dei sensori di destra supera quella di sinistra allora gira a sinistra e viceversa, l'obiettivo è quello di avvicinarsi alla luce.
+- *performance.lua* --> contains the `euclidean_distance` function to calculate the Euclidean distance between the robot's current position and the light's position.
 
-Per ciascun file .argos ho impostato un random_seed per avere la possibilità di riprodurre l'esperimento per vedere come cambia il comportamento del robot al variare delle soglie che ho impostato e in seguito ho modificato anche tale valore per vedere come cambia il comportamento al variare dell'ambiente.
+- *composite_behaviour.lua* --> contains the robot controller logic. I developed a solution using a behavior-based architecture with classic arbitration (sense-think-act) and divided the robot's behavior into four main states, structured like a deterministic finite state automaton.
+  - Initially, I defined global variables representing threshold values, which were heuristically adjusted based on environmental conditions:
+    - `MOVE_STEPS = 15`
+    - `MAX_VELOCITY = 15`
+    - `LIGHT_THRESHOLD = 1.8`
+    - `PROXIMITY_THRESHOLD = 0.1`
+    - `NOISE_THRESHOLD = 0.06`
+    - `FRONTAL_THRESHOLD = 0.05`.
 
-- *01_composite_behaviour.argos* --> in questo file ho lasciato i blocchi a forma di cubo e un solo robot
-  - Problema: inizialmente non avevo fatto la suddivisione della parte frontale e dietro per i sensori di luce per fare andare dritto il robot e quindi c'era il problema che aveva un andamento a zig-zag anche se raggiungeva l'obiettivo senza difficoltà
-  - Soluzione modificata: nel `SEARCHING_TARGET` imposto un controllo in più, se la metà frontale dei sensori supera la somma dei sensori dietro e dietro non rileva nessuna luce allora significa che il robot è disposto frontalmente rispetto alla luce e può avanzare dritto
+  - The `init` and `reset` functions are identical and establish a random initial movement, set `n_steps` to 0, and set the robot's initial state to `RANDOM_WALK`.
+  - In the `destroy` function, there are `log`s of the robot's position, the number of steps, and the calculation of the Euclidean distance to verify performance at the end of the simulation.
+  - The `step` function, containing the actual controller logic, is executed every 10 ticks per second. It reads the light and proximity sensor values and performs some sensor pre-processing. It checks which state the robot is in.
+  - if the total sum of all light sensors exceeds a certain threshold, the robot is in the state of:
+    - `REACHED_TARGET`:  it has reached the goal and should stop;
+  - if the total sum of all proximity sensors exceeds a certain threshold, the robot is in the state of:
+    - `OBSTACLE_AVOIDANCE`: if the sum of right proximity sensors exceeds that of left ones, it turns left, and vice versa, aiming to move away from the obstacle.
+  - if the total sum of all light sensors detects nothing and no object is detected in front, the robot is in the state of:
+    - `RANDOM_WALK`: it executes a random walk, changing periodically after every `MOVE_STEPS`;
+  - if none of the previous conditions succeed, the robot remains in the state of:
+    - `SEARCHING_TARGET`: if it detects light in front (greater than 0) and detects nothing behind (below the `FRONTAL_THRESHOLD`), it means it is positioned in front of the light and can move forward at maximum velocity. Otherwise, it performs further checks to recalibrate the robot's position; if the sum of right sensors exceeds that of left ones, it turns left, and vice versa, aiming to approach the light.
 
-- *02_composite_behaviour_more_blocks.argos* --> in questo file ho aumentato il numero di blocchi e impostato diverse dimensioni (alti e lunghi)
-  - Problema: i blocchi alti ostruivano la visuale dei sensori di luce e il robot non riesce a rilevare l'intensità della luce
-  - Soluzione modificata: ho aggiunto il movimento randomico (dopo un tot di step) se non rileva la luce e nella prossimità frontale non sono presenti ostacoli (che nella prima soluzione, con un tipo di ambiente più favorevole e semplice non serviva)
+## Problems and possible solutions for each environment change
+For each .argos file, I set a `random_seed` to reproduce the experiment to see how the robot's behavior changes with varying thresholds, then modified this value to observe changes in behavior with varying environments.
 
-- *03_composite_behaviour_more_robots.argos* --> in questo file sono rimasti invariati i blocchi e ho aumentato il numero di robot (quantity = 3), per vedere coome si comportava con oggetti mobili
-  - Problema: avevo impostato il fatto che dovessero continuare a girare in prossimità della luce, capitava che i robot si "spostassero" a vicenda dato che si rilevano come ostacoli
-  - Soluzione modificata: quando il robot trova la luce si ferma
+- *01_composite_behaviour.argos* --> cubic blocks were left in this file with a single robot.
+  - Problem: Initially, I had not divided the front and back parts for light sensors, causing the robot to zig-zag even though it reached the goal effortlessly.
+  - Modified Solution: I added an extra check to make the robot move straight if it is facing the light.
 
-- *04_composite_behaviour_more_lights.argos* --> in questo file ho aumentato il numero di luci: ho lasciato quella centrale di intensità 1 e un'altra più spostata vicino al bordo, più bassa in altezza e con intensità inferiore
-- Problema1: se l'intensità è troppo bassa, il valore di intensità luminosa rilevata totale non arriva mai a superare LIGHT_TRESHOLD e il robot gira in prossimità, è uno dei comportamenti possibili nella soluzione ma non voluto secondo la logica impostata
-- Problema2: nel caso sfortunato i blocchi si dispongano a cono e dietro c'è la luce, il robot continua a girare su se stesso perchè rileva sempre gli ostacoli, a volte nonostante il movimento random non riesce ad uscire
+- *02_composite_behaviour_more_blocks.argos* --> the number of blocks was increased in this file, with different dimensions (heights and lengths).
+  - Problem: Tall blocks obstructed the light sensor's view, causing the robot to fail to detect light intensity.
+  - Modified Solution: I added random movement (after a certain number of steps) if it does not detect light and there are no obstacles in front (which was unnecessary in the first solution, with a simpler and more favorable environment).
+
+- *03_composite_behaviour_more_robots.argos* --> the blocks remained unchanged in this file, but the number of robots increased (quantity = 3), to observe behavior with moving objects.
+- Problem: I had set them to keep rotating near the light, causing the robots to "push" each other since they detect each other as obstacles.
+- Modified Solution: When a robot finds the light, it stops.
+
+- *04_composite_behaviour_more_lights.argos* --> the number of lights was increased in this file, with one central light of intensity 1 and another shifted close to the edge, lower in height, and with lower intensity.
+- Problem 1: If the intensity is too low, the total detected light intensity never exceeds `LIGHT_THRESHOLD`, causing the robot to rotate in proximity, which is one of the possible behaviors in the solution but not intended according to the logic set.
+- Problem 2: In an unfortunate scenario where the blocks form a cone and the light is behind, the robot keeps rotating because it continually detects the light and the obstacles, sometimes unable to escape the trap.
+
+- *05_composite_behaviour_more_lights_with_noise.argos* --> this file retained all settings from the previous environment with the addition of noise in sensors and actuators set to 0.01, and I changed the value of random_seed.
+- Problem: I had to adjust threshold values due to noise.
 
 ## Other considerations
-- impostare un valore di treshold, trovato con prove empiriche relative ad un ambiente non funziona più se cambiano le condizioni del mondo
+- Setting threshold values found through empirical testing in one environment no longer works if the world's conditions change.
