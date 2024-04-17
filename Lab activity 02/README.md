@@ -1,7 +1,7 @@
 # Composite behaviour
 TThis lab activity aims on combining simple behaviours into a composite one.
 
-## Constraints
+## Task
 The robot should:
 - find a light source and go towards it
   - reach the target as fast as possible (MAX_VELOCITY = 15)
@@ -11,7 +11,7 @@ The robot should:
 The robot is equipped with both light and proximity sensors.
 
 ## Solution description
-- *utilities.lua* --> contains enums and utility functions.
+- *[utilities.lua](utilities.lua)* --> contains enums and utility functions.
   - `MovementType`: enum representing the robot's movement type (`FORWARD`: moves forward, `BACKWARD`: moves backward, `LEFT`: turns left, `RIGHT`: turns right, `BACK_LEFT`: turns left backward, `BACK_RIGHT`: turns right backward, `STOP`: stops)
   - `OrientationType`: orientation, considering the robot's sensors as arranged vertically and horizontally:
     - `VERTICAL_FRONT` table containing indices of sensors corresponding to the front half
@@ -20,9 +20,9 @@ The robot is equipped with both light and proximity sensors.
   - `search_highest_value`: function that searches among input sensors for the highest value and returns that value with its corresponding index
   - `read_half_sensors`: calculates the sum of half the sensors based on the specified `OrientationType` (left/right horizontally or front/back vertically).
 
-- *performance.lua* --> contains the `euclidean_distance` function to calculate the Euclidean distance between the robot's current position and the light's position.
+- *[performance.lua](performance.lua)* --> contains the `euclidean_distance` function to calculate the Euclidean distance between the robot's current position and the light's position.
 
-- *composite_behaviour.lua* --> contains the robot controller logic. I developed a solution using a behavior-based architecture with classic arbitration (sense-think-act) and divided the robot's behavior into four main states, structured like a deterministic finite state automaton.
+- *[composite_behaviour.lua](composite_behaviour.lua)* --> contains the robot controller logic. I developed a solution using a behavior-based architecture with classic arbitration (sense-think-act) and divided the robot's behavior into four main states, structured like a deterministic finite state automaton.
   - Initially, I defined global variables representing threshold values, which were heuristically adjusted based on environmental conditions:
     - `MOVE_STEPS = 15`
     - `MAX_VELOCITY = 15`
@@ -46,23 +46,23 @@ The robot is equipped with both light and proximity sensors.
 ## Problems and possible solutions for each environment change
 For each .argos file, I set a `random_seed` to reproduce the experiment to see how the robot's behavior changes with varying thresholds, then modified this value to observe changes in behavior with varying environments.
 
-- *01_composite_behaviour.argos* --> cubic blocks were left in this file with a single robot.
+- *[01_composite_behaviour.argos](01_composite_behaviour.argos)* --> cubic blocks were left in this file with a single robot.
   - Problem: Initially, I had not divided the front and back parts for light sensors, causing the robot to zig-zag even though it reached the goal effortlessly.
   - Modified Solution: I added an extra check to make the robot move straight if it is facing the light.
 
-- *02_composite_behaviour_more_blocks.argos* --> the number of blocks was increased in this file, with different dimensions (heights and lengths).
+- *[02_composite_behaviour_more_blocks.argos](02_composite_behaviour_more_blocks.argos)* --> the number of blocks was increased in this file, with different dimensions (heights and lengths).
   - Problem: Tall blocks obstructed the light sensor's view, causing the robot to fail to detect light intensity.
   - Modified Solution: I added random movement (after a certain number of steps) if it does not detect light and there are no obstacles in front (which was unnecessary in the first solution, with a simpler and more favorable environment).
 
-- *03_composite_behaviour_more_robots.argos* --> the blocks remained unchanged in this file, but the number of robots increased (quantity = 3), to observe behavior with moving objects.
+- *[03_composite_behaviour_more_robots.argos](03_composite_behaviour_more_robots.argos)* --> the blocks remained unchanged in this file, but the number of robots increased (quantity = 3), to observe behavior with moving objects.
 - Problem: I had set them to keep rotating near the light, causing the robots to "push" each other since they detect each other as obstacles.
 - Modified Solution: When a robot finds the light, it stops.
 
-- *04_composite_behaviour_more_lights.argos* --> the number of lights was increased in this file, with one central light of intensity 1 and another shifted close to the edge, lower in height, and with lower intensity.
+- *[04_composite_behaviour_more_lights.argos](04_composite_behaviour_more_lights.argos)* --> the number of lights was increased in this file, with one central light of intensity 1 and another shifted close to the edge, lower in height, and with lower intensity.
 - Problem 1: If the intensity is too low, the total detected light intensity never exceeds `LIGHT_THRESHOLD`, causing the robot to rotate in proximity, which is one of the possible behaviors in the solution but not intended according to the logic set.
 - Problem 2: In an unfortunate scenario where the blocks form a cone and the light is behind, the robot keeps rotating because it continually detects the light and the obstacles, sometimes unable to escape the trap.
 
-- *05_composite_behaviour_more_lights_with_noise.argos* --> this file retained all settings from the previous environment with the addition of noise in sensors and actuators set to 0.01, and I changed the value of random_seed.
+- *[05_composite_behaviour_more_lights_with_noise.argos](05_composite_behaviour_more_lights_with_noise.argos)* --> this file retained all settings from the previous environment with the addition of noise in sensors and actuators set to 0.01, and I changed the value of random_seed.
 - Problem: I had to adjust threshold values due to noise.
 
 ## Other considerations

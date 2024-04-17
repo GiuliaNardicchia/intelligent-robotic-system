@@ -52,7 +52,7 @@ local function search_highest_value(robot_property)
             value = robot_property[i].value
         end
     end
-    return idx, value
+    return idx
 end
 
 --- Read half sensors of the robot, the first half corresponding to the OrientationType specified.
