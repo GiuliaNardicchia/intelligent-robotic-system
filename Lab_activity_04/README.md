@@ -50,14 +50,33 @@ Primarily, I utilized the function `vector.vec2_polar_sum(v1,v2)` to add vectors
 ### Controller
 *[controller-motor_schemas.lua](controller-motor_schemas.lua)* encapsulates the robot's controller logic.
 
-Vengono definite alcune costanti utilizzate nel codice, come il numero di passi di movimento (`MOVE_STEPS`), la velocità massima (`MAX_VELOCITY`), le soglie per la luce (`LIGHT_THRESHOLD`), la prossimità (`PROXIMITY_THRESHOLD`) e il rumore (`NOISE_THRESHOLD`), oltre alla lunghezza dell'asse delle ruote (`L`) e alla distanza (`D`).
+Ho implementato un ***Perceptual Schema*** che usa i seguenti sensori:
+- light
+- proximity
 
-To convert motor commands that are expressed in the form of translational and angular
-velocities into differential actions (wheel velocities) I used the formulas expressed in the function `converter_from_rototransational_to_differential` e `multiplier`, utilizzate per la conversione tra movimento roto-traslazionale e differenziale, nonché per moltiplicare le velocità delle ruote.
+Vengono definite alcune costanti utilizzate nel codice, come il numero di passi di movimento (`MOVE_STEPS`), 
+la velocità massima (`MAX_VELOCITY`), le soglie per la luce (`LIGHT_THRESHOLD`), la prossimità (`PROXIMITY_THRESHOLD`) 
+e il rumore (`NOISE_THRESHOLD`), oltre alla lunghezza dell'asse delle ruote (`L`) e alla distanza (`D`).
 
-Nella funzione di step:
-- innanzitutto ottengo l'indice corrispondente al maggior valore riscontrato sia nei sensori di luce sia nei sensori di prossimità usando la funzione di utilità `search_highest_value`. 
-Ottengo poi il valore di lenght e di angle corrispondenti all'indice e passo i valori alle funzioni `attractive_field` e `repulsive_field` per ottenere i vettori risultanti. Allo stesso modo con `tangential_field`. 
-E ho sommato i vettori a coppie due a due con le coordinate polari. 
-A questo punto ho applicato una conversione da movimento roto-traslazionale a differenziale e ho ottenuto la velocità delle ruote sinistra e destra e applicando un moltiplicatore li ho passati come input al robot (attuatori). 
-Ho implementato un Perceptual Schema per un sensore, ricavo il sensore che percepisce il maggior valore 
+La funzioni di `init` e `reset` sono equivalenti, viene definita la costante globale `L`, il cui valore è ottenuto con `robot.wheels.axis_length` e `n_steps` viene posto pari a 0.
+
+- In the `destroy` function, there are `log`s of the robot's position, the number of steps, and the calculation of the Euclidean distance to verify performance at the end of the simulation.
+
+Nella funzione di `step`:
+- innanzitutto vengono letti i valori dei sensori di luce e di prossimità, e vengono determinati gli indici corrispondenti al valore massimo rilevato per ciascun sensore.
+- Dagli indici ottengo: *value* e *angle* per i due sensori e moltiplicando *value* per *D* ottengo la *distance* dalla luce.
+- Vengono calcolati i vettori di forza per i comportamenti di attrazione, repulsione e movimento tangenziale utilizzando le funzioni `attractive_field`, `repulsive_field` e `tangential_field`.
+- Vengono sommati i vettori risultanti a coppie utilizzando le coordinate polari.
+- Ho aggiunto due controlli:
+  - if the light is detected and there are no obstacle in the proximity allora al vettore risultato precedente aggiungo un ulteriore vettore per il movimento uniforme.
+  Ho usato la funzione `uniform_field` passando come parametri una lunghezza costante e un angolo proporzionale a quello della luce rilevata.
+  - if the light is not detected allora al vettore risultato precedente aggiungo un ulteriore vettore per il movimento random.
+  Ho usato sempre la funzione `uniform_field` passando come parametri una lunghezza costante e un angolo ottenuto con `robot.random.uniform(-math.pi/5,math.pi/5)`.
+- Motor commands expressed as translational and angular velocities are converted into differential actions (wheel velocities) using the `converter_from_rototransational_to_differential` function. 
+- Afterwards, they are scaled to the maximum velocity using the `multiplier` function.
+- Infine vengono impostate le velocità delle ruote del robot in base ai risultati ottenuti.
+
+## Considerations
+- Avendo impostato il movimento tangenziale solo di tipo clockwise, il robot girerà sempre a destra ed è possibile che ritrovandosi un ostacolo messo in una determinata posizione obblighi il robot a tornare indietro.
+Ho deciso di non mettere però la possibilità di girare anche a sinistra poiché si incastrava più spesso nei casi in cui gli ostacoli erano posti davanti al target in una forma a cono.
+- Personalmente non ho riscontrato il problema del ***Local Minima*** probabilmente perché era presente del rumore nei sensori di luce e di prossimità e forse perché ho aggiunto anche un campo costante uniforme e random in alcune circostanze.

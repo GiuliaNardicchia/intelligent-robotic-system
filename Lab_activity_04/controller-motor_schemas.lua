@@ -38,9 +38,6 @@ end
 
 function init()
     L = robot.wheels.axis_length -- distance between the two wheels
-    left_v = robot.random.uniform(0,MAX_VELOCITY)
-    right_v = robot.random.uniform(0,MAX_VELOCITY)
-    robot.wheels.set_velocity(left_v,right_v)
     n_steps = 0
 end
 
@@ -71,7 +68,7 @@ function step()
         -- UNIFORM FIELD
         local uniform_vector = potential_field.uniform_field(2, robot.light[light_idx].angle)
         result_vector = vector.vec2_polar_sum(result_vector, uniform_vector)
-        -- if the linght is not detected
+        -- if the light is not detected
     elseif robot.light[light_idx].value < NOISE_THRESHOLD then
         -- RANDOM FIELD
         if n_steps % MOVE_STEPS == 0 then
@@ -92,9 +89,7 @@ end
 
 
 function reset()
-    left_v = robot.random.uniform(0,MAX_VELOCITY)
-    right_v = robot.random.uniform(0,MAX_VELOCITY)
-    robot.wheels.set_velocity(left_v,right_v)
+    L = robot.wheels.axis_length -- distance between the two wheels
     n_steps = 0
 end
 
