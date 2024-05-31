@@ -1,5 +1,5 @@
-local robotUtilities = dofile("utilities.lua")
-local performance = dofile("performance.lua")
+local robotUtilities = require "utilities"
+local performance = require "performance"
 
 MOVE_STEPS = 15
 MAX_VELOCITY = 15

@@ -95,7 +95,7 @@ end
 
 
 function destroy()
-    local light_position = {x = 2, y = 0}
+--[[     local light_position = {x = 2, y = 0}
     local robot_position = {x = robot.positioning.position.x, y = robot.positioning.position.y, z = robot.positioning.position.z}
     local euclidean_distance = performance.euclidean_distance(robot_position.x, robot_position.y, light_position.x, light_position.y)
 
@@ -103,5 +103,10 @@ function destroy()
     log("n_steps: " .. n_steps)
     log("robot.position.x = " .. robot_position.x)
     log("robot.position.y = " .. robot_position.y)
-    log("robot.position.z = " .. robot_position.z)
+    log("robot.position.z = " .. robot_position.z) ]]
+
+    x = robot.positioning.position.x
+    y = robot.positioning.position.y
+    d = math.sqrt((x-1.5)^2 + y^2)
+    print('f_distance ' .. d)
 end

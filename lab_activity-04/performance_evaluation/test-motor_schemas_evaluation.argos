@@ -7,9 +7,8 @@
   <!-- ************************* -->
   <framework>
     <system threads="0" />
-    <experiment length="0"
-                ticks_per_second="10" />
-    />
+    <experiment length="300"
+      ticks_per_second="10" />
   </framework>
 
   <!-- *************** -->
@@ -115,7 +114,7 @@
   <!-- * Visualization * -->
   <!-- ****************** -->
 <!--   <visualization/> -->
-    <visualization>
+<!--     <visualization>
     <qt-opengl lua_editor="false">
       <camera>
 				<placements>
@@ -125,5 +124,5 @@
       </camera>
     </qt-opengl>
   </visualization>
-
+ -->
 </argos-configuration>

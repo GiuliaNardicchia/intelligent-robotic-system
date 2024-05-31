@@ -1,4 +1,4 @@
-local robotUtilities = dofile("utilities.lua")
+local robotUtilities = require "utilities"
 
 MOVE_STEPS = 15
 MAX_VELOCITY = 15
@@ -52,8 +52,8 @@ local function wander_competence()
     -- if neither the right nor left side detects any light
     -- and there are no obstacles detected in front
     local difference = math.abs(sum_light_front - sum_light_back)
-    logerr("difference "..difference)
-    logerr("sum_light_front "..sum_light_front)
+    log("difference "..difference)
+    log("sum_light_front "..sum_light_front)
     --if sum_light_left == 0 and sum_light_right == 0 and not(proximity_front > PROXIMITY_THRESHOLD) then
     if total_light < NOISE_THRESHOLD and not(proximity_front > PROXIMITY_THRESHOLD) then
         log("RANDOM_WALK")
@@ -117,5 +117,8 @@ end
 
 
 function destroy()
-
+    x = robot.positioning.position.x
+    y = robot.positioning.position.y
+    d = math.sqrt((x-1.5)^2 + y^2)
+    print('f_distance ' .. d)
 end
